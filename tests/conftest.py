@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from api.auth import AuthenticatedUser, get_current_user
+from api.auth import AuthenticatedUser, get_current_user, get_optional_user
 from api.deps import get_user_repository
 from api.main import app
 from core.models.user import UserDoc
@@ -45,6 +45,7 @@ def repo() -> InMemoryUserRepository:
 def client(repo: InMemoryUserRepository):
     app.dependency_overrides[get_user_repository] = lambda: repo
     app.dependency_overrides[get_current_user] = lambda: TEST_USER
+    app.dependency_overrides[get_optional_user] = lambda: TEST_USER
     transport = httpx.ASGITransport(app=app)
     yield httpx.AsyncClient(transport=transport, base_url="http://test")
     app.dependency_overrides.clear()

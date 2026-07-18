@@ -61,3 +61,14 @@ def get_current_user(
         display_name=claims.get("name", ""),
         photo_url=claims.get("picture", ""),
     )
+
+
+def get_optional_user(
+    request: Request, settings: Settings = Depends(get_settings)
+) -> AuthenticatedUser | None:
+    """Anonymous-friendly variant: the signup screen validates usernames before any
+    Firebase account exists. No Authorization header → None; a present-but-invalid
+    token still 401s."""
+    if not request.headers.get("Authorization"):
+        return None
+    return get_current_user(request, settings)

@@ -10,7 +10,7 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.auth import AuthenticatedUser, get_current_user
+from api.auth import AuthenticatedUser, get_current_user, get_optional_user
 from api.deps import get_user_repository
 from core.db.user_repository import UserRepository
 from core.models.user import UserDoc, UsernameValidation, UserResponse, UserUpdate
@@ -96,10 +96,12 @@ async def delete(
 @router.get("/validate_username", response_model=UsernameValidation)
 async def validate_username(
     username: str,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser | None = Depends(get_optional_user),
     repo: UserRepository = Depends(get_user_repository),
 ) -> UsernameValidation:
-    return await _validate(username.strip().lower(), user.uid, repo)
+    # Optional auth: the signup screen checks availability before the Firebase
+    # account exists; when authenticated, the user's own username stays valid.
+    return await _validate(username.strip().lower(), user.uid if user else None, repo)
 
 
 @router.get("/profile/{uid}", response_model=UserResponse)
@@ -114,7 +116,9 @@ async def profile(
     return doc.to_response()
 
 
-async def _validate(username: str, own_uid: str, repo: UserRepository) -> UsernameValidation:
+async def _validate(
+    username: str, own_uid: str | None, repo: UserRepository
+) -> UsernameValidation:
     if not username:
         return UsernameValidation(valid=False, message="Informe um nome de usuário.")
     if len(username) > USERNAME_MAX_LENGTH:

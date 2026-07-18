@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import user
 from core.config import get_settings
@@ -22,6 +23,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Couvert API", version="0.1.0", lifespan=lifespan)
+# Dev-only need: Expo web (browser) calls the API cross-origin; native apps don't use CORS.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(user.router)
 
 

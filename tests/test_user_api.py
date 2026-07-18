@@ -108,6 +108,22 @@ async def test_validate_username_free_taken_own_and_invalid(
         assert isinstance(result["message"], str) and result["message"]
 
 
+async def test_validate_username_works_without_token(
+    unauthenticated_client, repo: InMemoryUserRepository
+):
+    """The signup screen checks availability before any Firebase account exists."""
+    from core.models.user import UserDoc
+
+    other = UserDoc.new("uid-2")
+    repo.docs["uid-2"] = other.model_copy(update={"username": "taken"})
+    async with unauthenticated_client as client:
+        free = (await client.get("/user/validate_username?username=livre")).json()
+        taken = (await client.get("/user/validate_username?username=taken")).json()
+
+    assert free["valid"] is True
+    assert taken["valid"] is False
+
+
 async def test_delete_then_me_is_404(client):
     async with client:
         await client.post("/user/login")
