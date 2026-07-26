@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     def cosmos_configured(self) -> bool:
         return bool(self.cosmos_endpoint and self.cosmos_key)
 
+    @property
+    def firebase_configured(self) -> bool:
+        """firebase_admin.initialize_app() succeeds with no credentials and only
+        fails at the first token verification, so this is checked at startup."""
+        return bool(self.firebase_credentials_json or self.firebase_credentials_path)
+
 
 @lru_cache
 def get_settings() -> Settings:

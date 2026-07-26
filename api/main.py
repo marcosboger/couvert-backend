@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,6 +13,8 @@ from core.db.cached_restaurant_repository import CachedRestaurantRepository
 from core.db.cosmos import create_client, get_container
 from core.db.restaurant_repository import CosmosRestaurantRepository
 from core.db.user_repository import CosmosUserRepository
+
+logger = logging.getLogger("couvert.startup")
 
 
 async def _warm_cache(repo: CachedRestaurantRepository) -> None:
@@ -29,6 +32,18 @@ async def _warm_cache(repo: CachedRestaurantRepository) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    if not settings.cosmos_configured:
+        logger.warning(
+            "COSMOS_ENDPOINT/COSMOS_KEY unset — every /couvert and /user route will 503."
+        )
+    if not settings.firebase_configured:
+        # Not fatal: /couvert/* is public. But /user/* would accept a request and
+        # then fail deep inside firebase_admin, which is a confusing way to learn
+        # about a missing secret.
+        logger.warning(
+            "Neither FIREBASE_CREDENTIALS_JSON nor FIREBASE_CREDENTIALS_PATH is set — "
+            "public content will serve, but every authenticated /user route will fail."
+        )
     client = None
     warmup: asyncio.Task | None = None
     if settings.cosmos_configured:

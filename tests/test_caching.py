@@ -181,6 +181,28 @@ def test_user_endpoints_are_never_marked_cacheable():
     assert "cache-control" not in {k.lower() for k in response.headers}
 
 
+def test_firebase_configured_reports_either_credential_source():
+    from core.config import Settings
+
+    bare = Settings(_env_file=None)
+    assert not bare.firebase_configured
+    assert bare.model_copy(update={"firebase_credentials_json": "{}"}).firebase_configured
+    assert bare.model_copy(update={"firebase_credentials_path": "x.json"}).firebase_configured
+
+
+def test_startup_warns_when_credentials_are_missing(monkeypatch, caplog):
+    """A missing Firebase secret otherwise only surfaces at the first login, from
+    deep inside firebase_admin — initialize_app() happily starts without one."""
+    from core.config import Settings
+
+    monkeypatch.setattr("api.main.get_settings", lambda: Settings(_env_file=None))
+    with caplog.at_level("WARNING", logger="couvert.startup"), TestClient(app):
+        pass
+    warnings = " ".join(r.message for r in caplog.records)
+    assert "FIREBASE_CREDENTIALS_JSON" in warnings
+    assert "COSMOS_ENDPOINT" in warnings
+
+
 def test_health_is_not_cached():
     with TestClient(app) as client:
         response = client.get("/health")
