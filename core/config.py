@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     # Path to the Firebase service-account JSON (Project settings > Service accounts)
     firebase_credentials_path: str = ""
 
+    # Places API (New), key restricted to that API. Used only by offline jobs —
+    # every call is cached and capped (see jobs/resolve_google_maps.py).
+    google_maps_api_key: str = ""
+
     @property
     def cosmos_configured(self) -> bool:
         return bool(self.cosmos_endpoint and self.cosmos_key)

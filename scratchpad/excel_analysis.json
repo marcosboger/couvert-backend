@@ -1,0 +1,162 @@
+{
+ "n": 925,
+ "tipos": {
+  "Bar": 185,
+  "Bar + Restaurante": 2,
+  "Bar; Hamburgueria": 3,
+  "Bar; Listening Bar": 3,
+  "Restaurante": 577,
+  "Café": 20,
+  "Doceria": 30,
+  "Hamburgueria": 11,
+  "Sorveteria": 24,
+  "Padaria": 28,
+  "Restaurante; Hamburgueria": 1,
+  "Lanchonete": 6,
+  "Café; Restaurante": 2,
+  "Restaurante; Bar": 7,
+  "Café; Padaria": 4,
+  "Bar; Boteco": 2,
+  "Café; Empório": 1,
+  "Pizzaria": 3,
+  "Bar; Restaurante": 6,
+  "Café; Mercado": 1,
+  "Café; Confeitaria": 3,
+  "Lanchonete; Restaurante": 1,
+  "Restaurante; Café": 2,
+  "Padaria; Café": 1,
+  "Restaurante; Peixaria": 1,
+  "Bar; Petiscaria": 1
+ },
+ "cozinhas_top": [
+  [
+   "Contemporâneo",
+   291
+  ],
+  [
+   "Italiano",
+   123
+  ],
+  [
+   "Brasileiro",
+   120
+  ],
+  [
+   "Japonês",
+   69
+  ],
+  [
+   "Contemporânea",
+   63
+  ],
+  [
+   "Francês",
+   29
+  ],
+  [
+   "Carnes",
+   29
+  ],
+  [
+   "Internacional",
+   25
+  ],
+  [
+   "Árabe",
+   23
+  ],
+  [
+   "Vegetariano",
+   13
+  ],
+  [
+   "Português",
+   12
+  ],
+  [
+   "Coreano",
+   10
+  ],
+  [
+   "Espanhol",
+   9
+  ],
+  [
+   "Brasileiro; Contemporâneo",
+   8
+  ],
+  [
+   "Café",
+   7
+  ],
+  [
+   "Chinês",
+   6
+  ],
+  [
+   "Mexicano",
+   5
+  ],
+  [
+   "Peruano",
+   5
+  ],
+  [
+   "Mediterrâneo",
+   5
+  ],
+  [
+   "Argentino",
+   5
+  ],
+  [
+   "Tailandês",
+   4
+  ],
+  [
+   "Italiano; Contemporâneo",
+   4
+  ],
+  [
+   "Asiático",
+   4
+  ],
+  [
+   "Contemporâneo; Brasileiro",
+   3
+  ],
+  [
+   "Europeu",
+   3
+  ]
+ ],
+ "dupes": [
+  "Toto",
+  "Lido Amici di Amici",
+  "Mirá"
+ ],
+ "sample_premio": [
+  "12º Colocado | Melhor Bar - Prêmio Paladar 2025; Indicado | Melhor Drink com Cachaça - Prêmio Prazer",
+  "3º Colocado | Melhor Bar - Prêmio Nossa (UOL) 2024; 10º Colocado | Melhor Bar - Prêmio Paladar 2025;",
+  "2º Colocado | Melhor Bar - Prêmio Nossa (UOL) 2024",
+  "2º Colocado | Drinques - Veja Comer e Beber 2024; 1º Colocado | Drinques - Veja Comer e Beber 2025; ",
+  "1º Colocado | Drinques - Veja Comer e Beber 2024; 3º Colocado | Drinques - Veja Comer e Beber 2025; "
+ ],
+ "sample_ocasiao": [
+  "Happy Hour; Bom pra Date; Com amigos",
+  "Happy Hour; Bom pra Date; Com amigos",
+  "Happy Hour; Bom pra Date; Com amigos",
+  "Happy Hour; Bom pra Date; Com amigos",
+  "Happy Hour; Bom pra Date; Com amigos"
+ ],
+ "sample_posic": [
+  "Coquetelaria",
+  "Coquetelaria",
+  "Coquetelaria; Bar de Drinques",
+  "Coquetelaria",
+  "Coquetelaria",
+  "Coquetelaria",
+  "Coquetelaria",
+  "Coquetelaria; Bar de Drinques"
+ ]
+}

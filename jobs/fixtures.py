@@ -6,13 +6,11 @@ image_key/logo_key are the app's bundled-asset keys; real image_url/logo_url arr
 the Google Maps enrichment job (Phase 3).
 """
 
-import re
 from typing import Any
 
+from core.slug import make_restaurant_id
 
-def make_restaurant_id(name: str) -> str:
-    """Python port of makeRestaurantId(): lowercase, non-[a-z0-9] runs → '-', trim '-'."""
-    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+__all__ = ["make_restaurant_id", "restaurant_docs"]
 
 
 # (name, cuisine, rating, image_key, extras)

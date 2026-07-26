@@ -12,6 +12,8 @@ dependencies = [
     "aiohttp>=3.10",  # async transport for azure-cosmos aio client
     "firebase-admin>=6.6",
     "typer>=0.15",
+    "openpyxl>=3.1.5",
+    "httpx>=0.28.1",
 ]
 
 [dependency-groups]
