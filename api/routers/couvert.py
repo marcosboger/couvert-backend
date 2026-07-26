@@ -5,6 +5,7 @@ endpoints take no token. User-specific content (diary, lists, points) lives
 elsewhere and stays authenticated.
 """
 
+import asyncio
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,6 +17,7 @@ from core.models.couvert import (
     AwardWire,
     CuisineRowWire,
     CuisineWire,
+    HomeFeedWire,
     RestaurantListWire,
     RestaurantWire,
     make_award_id,
@@ -28,6 +30,58 @@ router = APIRouter(prefix="/couvert", tags=["couvert"])
 # cuisine query for the rest.
 ROW_CUISINES = 12
 ROW_SIZE = 12
+
+
+HOME_RECOMMENDATIONS = 12
+
+
+def _most_awarded(docs: list[RestaurantDoc]) -> list[RestaurantDoc]:
+    """Never sort in place — the repository may hand back a cached list."""
+    return sorted(docs, key=lambda d: (-len(d.awards), d.name))
+
+
+async def _build_rows(
+    repo: RestaurantRepository,
+) -> tuple[list[CuisineRowWire], dict[str, RestaurantDoc]]:
+    """The browse rows. Fetched concurrently: twelve serial round trips to Cosmos
+    cost several seconds on a cold cache, and they don't depend on each other."""
+    counts = await repo.cuisine_counts()
+    wanted = [name for name, _ in counts[:ROW_CUISINES]]
+    results = await asyncio.gather(
+        *(repo.search(cuisine=name, limit=ROW_SIZE) for name in wanted)
+    )
+    rows: list[CuisineRowWire] = []
+    by_id: dict[str, RestaurantDoc] = {}
+    for name, docs in zip(wanted, results, strict=True):
+        if not docs:
+            continue
+        rows.append(CuisineRowWire(cuisine=name, restaurant_ids=[d.id for d in docs]))
+        by_id.update({d.id: d for d in docs})
+    return rows, by_id
+
+
+async def warm_catalog(repo: RestaurantRepository) -> None:
+    """Preload everything an unfiltered browse and the home feed need, so the
+    first request after a cold start doesn't pay for it."""
+    await asyncio.gather(_build_rows(repo), repo.with_awards(), repo.count())
+
+
+@router.get("/home", response_model=HomeFeedWire)
+async def home_feed(
+    repo: RestaurantRepository = Depends(get_restaurant_repository),
+) -> HomeFeedWire:
+    """The home screen's three sections, two of which are empty for now.
+
+    `news` needs an editorial source that doesn't exist yet, and `activity`
+    needs friendships (Phase 6). Both return `[]` rather than placeholder
+    content, so the app can hide the section and show nothing invented.
+    """
+    awarded = _most_awarded(await repo.with_awards())
+    return HomeFeedWire(
+        news=[],
+        recommendations=[RestaurantWire.from_doc(d) for d in awarded[:HOME_RECOMMENDATIONS]],
+        activity=[],
+    )
 
 
 @router.get("/cuisines", response_model=list[CuisineWire])
@@ -49,18 +103,13 @@ async def list_restaurants(
     if cuisine or search:
         docs = await repo.search(cuisine=cuisine, term=search, limit=limit)
         return RestaurantListWire(
-            restaurants=[RestaurantWire.from_doc(d) for d in docs], rows=[], total=len(docs)
+            restaurants=[RestaurantWire.from_doc(d) for d in docs],
+            rows=[],
+            # Everything matching the filter, not just this page.
+            total=await repo.count(cuisine=cuisine, term=search),
         )
 
-    counts = await repo.cuisine_counts()
-    rows: list[CuisineRowWire] = []
-    by_id: dict[str, RestaurantDoc] = {}
-    for name, _ in counts[:ROW_CUISINES]:
-        docs = await repo.search(cuisine=name, limit=ROW_SIZE)
-        if not docs:
-            continue
-        rows.append(CuisineRowWire(cuisine=name, restaurant_ids=[d.id for d in docs]))
-        by_id.update({d.id: d for d in docs})
+    rows, by_id = await _build_rows(repo)
     return RestaurantListWire(
         restaurants=[RestaurantWire.from_doc(d) for d in by_id.values()],
         rows=rows,
@@ -86,9 +135,7 @@ async def discover_deck(
 ) -> list[RestaurantWire]:
     """Onboarding swipe deck. Award-carrying places first — a stronger first
     impression than alphabetical order, and stable between requests."""
-    awarded = await repo.with_awards()
-    awarded.sort(key=lambda d: (-len(d.awards), d.name))
-    deck = awarded[:limit]
+    deck = _most_awarded(await repo.with_awards())[:limit]
     if len(deck) < limit:
         seen = {d.id for d in deck}
         filler = await repo.search(limit=limit)

@@ -62,7 +62,11 @@ class CuisineRowWire(BaseModel):
 
 
 class RestaurantListWire(BaseModel):
-    """`rows` is empty for filtered queries — a search result has no grouping."""
+    """`rows` is empty for filtered queries — a search result has no grouping.
+
+    `total` is every restaurant matching the request, which can exceed
+    `len(restaurants)` when `limit` truncates the page.
+    """
 
     restaurants: list[RestaurantWire]
     rows: list[CuisineRowWire] = []
@@ -72,6 +76,44 @@ class RestaurantListWire(BaseModel):
 class CuisineWire(BaseModel):
     name: str
     restaurant_count: int
+
+
+class NewsItemWire(BaseModel):
+    """Editorial item on the home feed.
+
+    Declared but never populated yet — `/couvert/home` returns `news: []` because
+    there is no editorial source wired up. The shape is fixed now so filling it
+    later is a data change, not another frontend contract change. `title` carries
+    real text, unlike the fixtures' i18n `titleKey`.
+    """
+
+    id: str
+    source: str  # "paladar" | "veja-comer-beber" | "nossa-uol"
+    title: str
+    image_key: str
+    award_id: str | None = None
+    restaurant_id: str | None = None
+
+
+class ActivityItemWire(BaseModel):
+    """A friend's action. Empty until Phase 6 brings friendships."""
+
+    id: str
+    who: str
+    color: str
+    type: str  # "rated" | "quero" | "fui" | "fav"
+    restaurant_id: str
+    restaurant_name: str
+    rating: float | None = None
+
+
+class HomeFeedWire(BaseModel):
+    """Mirrors the app's `HomeFeed`. Two of the three sections are empty by
+    design; the app hides a section rather than rendering a placeholder."""
+
+    news: list[NewsItemWire] = []
+    recommendations: list[RestaurantWire] = []
+    activity: list[ActivityItemWire] = []
 
 
 class AwardWire(BaseModel):

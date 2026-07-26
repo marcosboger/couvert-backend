@@ -4,6 +4,7 @@ The app's AxiosHttpClient sends `Authorization: Bearer <firebase-id-token>` on e
 request (couvert-app/src/infra/axiosHttpClient.ts).
 """
 
+import json
 import threading
 from dataclasses import dataclass
 
@@ -32,7 +33,11 @@ def _ensure_firebase(settings: Settings) -> None:
     with _init_lock:
         if firebase_admin._apps:
             return
-        if settings.firebase_credentials_path:
+        if settings.firebase_credentials_json:
+            # Deployments inject the JSON as a secret — a container has no file.
+            cred = credentials.Certificate(json.loads(settings.firebase_credentials_json))
+            firebase_admin.initialize_app(cred)
+        elif settings.firebase_credentials_path:
             cred = credentials.Certificate(settings.firebase_credentials_path)
             firebase_admin.initialize_app(cred)
         else:

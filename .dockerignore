@@ -1,0 +1,27 @@
+# Secrets must never enter an image layer — they'd survive in the layer history
+# even if a later step deleted them.
+.env
+.env.*
+!.env.example
+firebase-service-account.json
+*.pem
+*.key
+
+# Offline jobs and their inputs aren't part of the API image. jobs/ also pulls in
+# openpyxl and the Google Places key, neither of which the API should carry.
+jobs/
+tests/
+scratchpad/
+data/
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.git/
+.gitignore
+*.log
+README.md
+Dockerfile
+.dockerignore

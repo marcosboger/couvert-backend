@@ -20,6 +20,7 @@ from pathlib import Path
 import typer
 from openpyxl import load_workbook
 
+from core.cuisines import canonical_cuisines
 from core.models.restaurant import AwardMention, RestaurantDoc
 from jobs.fixtures import make_restaurant_id
 
@@ -30,10 +31,8 @@ BASE_SHEET = "Base Couvert"
 XLSX_OPTION = typer.Option(DEFAULT_XLSX, exists=True)
 DRY_RUN_OPTION = typer.Option(False, "--dry-run")
 
-# Gender/spelling variants that mean the same category.
-CUISINE_ALIASES = {
-    "Contemporânea": "Contemporâneo",
-}
+# Cuisine spelling variants live in core.cuisines — the API resolves query labels
+# through the same table, so ingestion and filtering can't drift apart.
 
 _AWARD_ENTRY_RE = re.compile(r"^(?P<placement>[^|]+)\|\s*(?P<rest>.+)$")
 _YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
@@ -52,10 +51,7 @@ def split_multi(value: object) -> list[str]:
 
 
 def normalize_cuisines(values: list[str]) -> list[str]:
-    seen: dict[str, None] = {}
-    for v in values:
-        seen.setdefault(CUISINE_ALIASES.get(v, v), None)
-    return list(seen)
+    return canonical_cuisines(values)
 
 
 def parse_awards_mention(value: object) -> list[AwardMention]:

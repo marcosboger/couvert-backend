@@ -1,37 +1,65 @@
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.cache_headers import CacheHeadersMiddleware
 from api.routers import couvert, user
 from core.config import get_settings
+from core.db.cached_restaurant_repository import CachedRestaurantRepository
 from core.db.cosmos import create_client, get_container
 from core.db.restaurant_repository import CosmosRestaurantRepository
 from core.db.user_repository import CosmosUserRepository
+
+
+async def _warm_cache(repo: CachedRestaurantRepository) -> None:
+    """Preload the catalog so the first real request doesn't pay for it.
+
+    A cold browse costs ~14 round trips to Cosmos (seconds, from outside Azure),
+    and with scale-to-zero hosting some user always lands on a cold container.
+    Failures are swallowed: a warm cache is an optimisation, and every endpoint
+    works without it.
+    """
+    with contextlib.suppress(Exception):
+        await couvert.warm_catalog(repo)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     client = None
+    warmup: asyncio.Task | None = None
     if settings.cosmos_configured:
         client = create_client(settings)
         app.state.user_repository = CosmosUserRepository(
             get_container(client, settings, settings.users_container)
         )
-        app.state.restaurant_repository = CosmosRestaurantRepository(
-            get_container(client, settings, settings.restaurants_container)
+        app.state.restaurant_repository = CachedRestaurantRepository(
+            CosmosRestaurantRepository(
+                get_container(client, settings, settings.restaurants_container)
+            ),
+            ttl_seconds=settings.content_cache_seconds,
         )
+        # Backgrounded so readiness isn't held up by the warm-up.
+        warmup = asyncio.create_task(_warm_cache(app.state.restaurant_repository))
     yield
+    if warmup is not None and not warmup.done():
+        warmup.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await warmup
     if client is not None:
         await client.close()
 
 
 app = FastAPI(title="Couvert API", version="0.1.0", lifespan=lifespan)
-# Dev-only need: Expo web (browser) calls the API cross-origin; native apps don't use CORS.
+# Lets iOS/Android cache content responses on the device and revalidate with a 304.
+app.add_middleware(CacheHeadersMiddleware, max_age=get_settings().content_cache_seconds)
+# Expo web (browser) calls the API cross-origin; native apps send no Origin header.
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origin_regex=get_settings().cors_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )

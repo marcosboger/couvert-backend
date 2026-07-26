@@ -1,0 +1,34 @@
+name: CI
+
+# Lint, tests and a container build on every push and PR. The test suite uses an
+# in-memory repository and dependency overrides, so it needs no Cosmos or
+# Firebase credentials — CI stays secret-free.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.26"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Tests
+        run: uv run pytest -q
+
+      # Proves the image still builds; publishing happens in deploy.yml.
+      - name: Build container
+        run: docker build -t couvert-api:${{ github.sha }} .

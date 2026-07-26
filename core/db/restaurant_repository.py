@@ -10,6 +10,7 @@ from typing import Protocol
 from azure.cosmos import exceptions
 from azure.cosmos.aio import ContainerProxy
 
+from core.cuisines import canonical_cuisine
 from core.models.restaurant import RestaurantDoc
 from core.slug import make_restaurant_id
 
@@ -35,7 +36,7 @@ class RestaurantRepository(Protocol):
 
     async def with_awards(self) -> list[RestaurantDoc]: ...
 
-    async def count(self) -> int: ...
+    async def count(self, *, cuisine: str | None = None, term: str | None = None) -> int: ...
 
 
 class CosmosRestaurantRepository:
@@ -57,18 +58,26 @@ class CosmosRestaurantRepository:
             return None
         return RestaurantDoc.model_validate(item)
 
-    async def search(
-        self, *, cuisine: str | None = None, term: str | None = None, limit: int = 60
-    ) -> list[RestaurantDoc]:
+    def _filters(
+        self, cuisine: str | None, term: str | None
+    ) -> tuple[list[str], list[dict]]:
         where = [IN_SCOPE]
-        params: list[dict] = [{"name": "@limit", "value": min(max(limit, 1), MAX_LIMIT)}]
+        params: list[dict] = []
         if cuisine:
             where.append("ARRAY_CONTAINS(c.cuisines, @cuisine)")
-            params.append({"name": "@cuisine", "value": cuisine})
+            # 'Italiana' must find the 115 'Italiano' restaurants, not 0.
+            params.append({"name": "@cuisine", "value": canonical_cuisine(cuisine)})
         if term:
             where.append("(CONTAINS(LOWER(c.name), @term) OR CONTAINS(c.id, @slug))")
             params.append({"name": "@term", "value": term.lower()})
             params.append({"name": "@slug", "value": make_restaurant_id(term)})
+        return where, params
+
+    async def search(
+        self, *, cuisine: str | None = None, term: str | None = None, limit: int = 60
+    ) -> list[RestaurantDoc]:
+        where, params = self._filters(cuisine, term)
+        params.append({"name": "@limit", "value": min(max(limit, 1), MAX_LIMIT)})
         query = (
             f"SELECT {_FIELDS} FROM c WHERE {' AND '.join(where)} "
             "ORDER BY c.name OFFSET 0 LIMIT @limit"
@@ -91,8 +100,11 @@ class CosmosRestaurantRepository:
         )
         return await self._query(query, [])
 
-    async def count(self) -> int:
-        query = f"SELECT VALUE COUNT(1) FROM c WHERE {IN_SCOPE}"
-        async for total in self._container.query_items(query=query):
+    async def count(self, *, cuisine: str | None = None, term: str | None = None) -> int:
+        """Total matching the filter, ignoring any limit — this is what a caller
+        needs for pagination, so it must not be the size of the current page."""
+        where, params = self._filters(cuisine, term)
+        query = f"SELECT VALUE COUNT(1) FROM c WHERE {' AND '.join(where)}"
+        async for total in self._container.query_items(query=query, parameters=params):
             return int(total)
         return 0

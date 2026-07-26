@@ -45,7 +45,10 @@ class FakeRestaurantRepository:
     async def search(self, *, cuisine=None, term=None, limit=60) -> list[RestaurantDoc]:
         found = self.docs
         if cuisine:
-            found = [d for d in found if cuisine in d.cuisines]
+            from core.cuisines import canonical_cuisine
+
+            wanted = canonical_cuisine(cuisine)
+            found = [d for d in found if wanted in d.cuisines]
         if term:
             from core.slug import make_restaurant_id
 
@@ -63,8 +66,8 @@ class FakeRestaurantRepository:
     async def with_awards(self) -> list[RestaurantDoc]:
         return [d for d in self.docs if d.awards]
 
-    async def count(self) -> int:
-        return len(self.docs)
+    async def count(self, *, cuisine=None, term=None) -> int:
+        return len(await self.search(cuisine=cuisine, term=term, limit=10_000))
 
 
 @pytest.fixture
@@ -74,6 +77,20 @@ def client():
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+def test_home_feed_returns_the_three_sections(client):
+    body = client.get("/couvert/home").json()
+    assert set(body) == {"news", "recommendations", "activity"}
+    assert [r["id"] for r in body["recommendations"]] == ["picchi", "iz"]
+
+
+def test_home_feed_leaves_news_and_activity_empty_rather_than_invented(client):
+    """No editorial source exists and friendships are Phase 6 — the app hides
+    the section instead of showing placeholder content."""
+    body = client.get("/couvert/home").json()
+    assert body["news"] == []
+    assert body["activity"] == []
 
 
 def test_cuisines_are_ranked_by_restaurant_count(client):
@@ -103,6 +120,19 @@ def test_filtering_by_cuisine_drops_the_grouping(client):
     assert body["rows"] == []
     assert [r["name"] for r in body["restaurants"]] == ["Nino Cucina", "Picchi"]
     assert body["total"] == 2
+
+
+def test_total_counts_all_matches_not_just_the_returned_page(client):
+    """A caller paginating on `total` must not be told the page size."""
+    body = client.get("/couvert/restaurants", params={"cuisine": "Italiano", "limit": 1}).json()
+    assert len(body["restaurants"]) == 1
+    assert body["total"] == 2
+
+
+def test_a_variant_cuisine_label_finds_the_canonical_restaurants(client):
+    """The app's chips say 'Italiana'; the catalog says 'Italiano'."""
+    body = client.get("/couvert/restaurants", params={"cuisine": "Italiana"}).json()
+    assert [r["name"] for r in body["restaurants"]] == ["Nino Cucina", "Picchi"]
 
 
 def test_search_is_accent_insensitive_through_the_slug(client):
