@@ -2,18 +2,27 @@
 
 Backend for [couvert-app](../couvert-app): FastAPI API serving the app + offline jobs feeding Cosmos DB. Roadmap: `../LONGTERM.md`; current milestone: `../SHORTTERM.md`; frontend contract: `../FRONT.md`.
 
+**Deployed and public:**
+
+```
+https://couvert-api.agreeabledesert-5db4d03a.eastus.azurecontainerapps.io
+```
+
+Azure Container Apps, East US. Deploy procedure, operating commands and gotchas: **`DEPLOY.md`**. Frontend integration guide: **`../couvert-app/API_HANDOFF.md`**.
+
 ## Layout
 
-- `core/` — shared: settings, Pydantic wire models, Cosmos client + repositories
-- `api/` — FastAPI app: Firebase token verification, `/user/*` routes
-- `jobs/` — Typer CLI scripts: DB init, fixture seeding (later: Excel + Google Maps ingestion)
+- `core/` — shared: settings, Pydantic wire models, Cosmos client + repositories, caching, canonical cuisine vocabulary
+- `api/` — FastAPI app: Firebase token verification, `/user/*` routes, and the public `/couvert/*` content routes
+- `jobs/` — Typer CLI scripts: DB init, fixture seeding, Excel ingestion, Google Maps resolution, restaurant seeding. **Excluded from the container image** so the billable Places key never ships
 
 ## Setup
 
 1. Install deps: `uv sync` (or `python -m uv sync`)
 2. `cp .env.example .env` and fill in Cosmos endpoint/key + Firebase service-account path
-   (Cosmos: NoSQL API account with the free-tier discount; Firebase: service account of the
-   project the app signs into — currently `template-react-native-b8abd`).
+   (Cosmos: NoSQL API account `db-food-app`, database `CouvertApp`, free-tier discount
+   confirmed applied; Firebase: service account of the project the app signs into —
+   **`couvert-app`**, migrated 2026-07-04).
 3. One-time DB bootstrap: `uv run python -m jobs.seed_fixtures init-db`
 4. Seed restaurants: `uv run python -m jobs.seed_fixtures seed`
 
